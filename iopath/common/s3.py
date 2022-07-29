@@ -110,9 +110,7 @@ class S3PathHandler(PathHandler):
         from boto3.s3.transfer import TransferConfig
 
         # pyre-fixme[4]: Attribute must be annotated.
-        self.transfer_config = TransferConfig(
-            **(transfer_config_kwargs if transfer_config_kwargs else {})
-        )
+        self.transfer_config = TransferConfig(**transfer_config_kwargs or {})
 
     def _get_supported_prefixes(self) -> List[str]:
         """
@@ -242,13 +240,11 @@ class S3PathHandler(PathHandler):
                     # pyre-fixme[58]: `>` is not supported for operand types
                     #  `datetime` and `timedelta`.
                     if (local_dt - remote_dt) > dt.timedelta(minutes=0):
-                        logger.info(
-                            "URL {} was already cached in {}".format(path, local_path)
-                        )
+                        logger.info(f"URL {path} was already cached in {local_path}")
                         return local_path
 
-            logger.info("Caching {} ...".format(path))
-            tmp = local_path + ".tmp"
+            logger.info(f"Caching {path} ...")
+            tmp = f"{local_path}.tmp"
             # clean-up tmp if found, because if tmp exists, it must be a dirty
             # result of a previously process that didn't cleanup itself.
             if os.path.isfile(tmp):
@@ -272,7 +268,7 @@ class S3PathHandler(PathHandler):
                 except Exception:
                     pass
 
-            logger.info("URL {} cached in {}".format(path, local_path))
+            logger.info(f"URL {path} cached in {local_path}")
             return local_path
 
     # pyre-fixme[15]: `_copy_from_local` overrides method defined in `PathHandler`
@@ -301,7 +297,7 @@ class S3PathHandler(PathHandler):
 
         if not overwrite and self._exists(dst_path):
             logger = logging.getLogger(__name__)
-            logger.error("Error: Destination path {} already exists.".format(dst_path))
+            logger.error(f"Error: Destination path {dst_path} already exists.")
             return False
 
         bucket, s3_path = self._parse_uri(dst_path)
@@ -311,7 +307,7 @@ class S3PathHandler(PathHandler):
             return True
         except botocore.exceptions.ClientError as e:
             logger = logging.getLogger(__name__)
-            logger.error("Error in file upload - {}".format(str(e)))
+            logger.error(f"Error in file upload - {str(e)}")
             return False
 
     # pyre-fixme[3]: Return type must be annotated.
@@ -434,11 +430,7 @@ class S3PathHandler(PathHandler):
 
         elif "w" in mode:
             # 1. For writing, we give the user io.BytesIO or io.StringIO.
-            if "b" in mode:
-                buffer = io.BytesIO()
-            else:
-                buffer = io.StringIO()
-
+            buffer = io.BytesIO() if "b" in mode else io.StringIO()
             # 2. Decorate buffer so that we upload when it's closed by user.
             #       If StringIO, decorator does a simple+expensive conversion
             #       to bytesIO before uploading.
@@ -468,7 +460,7 @@ class S3PathHandler(PathHandler):
 
         if not overwrite and self._exists(dst_path):
             logger = logging.getLogger(__name__)
-            logger.error("Error: Destination path {} already exists.".format(dst_path))
+            logger.error(f"Error: Destination path {dst_path} already exists.")
             return False
 
         src_bucket, src_s3_path = self._parse_uri(src_path)
@@ -489,7 +481,7 @@ class S3PathHandler(PathHandler):
             return True
         except botocore.exceptions.ClientError as e:
             logger = logging.getLogger(__name__)
-            logger.error("Error in file copy - {}".format(str(e)))
+            logger.error(f"Error in file copy - {str(e)}")
             return False
 
     # pyre-fixme[24]: Generic type `dict` expects 2 type parameters, use
@@ -499,9 +491,7 @@ class S3PathHandler(PathHandler):
         client = self._get_client(bucket)
 
         try:
-            # Raises exception if not exists, else it exists.
-            response = client.head_object(Bucket=bucket, Key=s3_path)
-            return response
+            return client.head_object(Bucket=bucket, Key=s3_path)
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Message"] == "Bad Request":
                 raise OSError(
@@ -645,7 +635,7 @@ class S3ChunkReadIO(io.BufferedIOBase):
         self.timeout = timeout.total_seconds() if timeout is not None else None
         self.chunk_size = chunk_size
         self.offset = 0
-        self.buffered_window = range(0, 0)
+        self.buffered_window = range(0)
         self.buffer = io.BytesIO()
         # pyre-fixme[4]: Attribute must be annotated.
         self.length = client.get_object(Bucket=bucket, Key=key)["ContentLength"]
@@ -783,7 +773,7 @@ class S3ChunkReadIO(io.BufferedIOBase):
         self._read_chunk_to_buffer(self.offset + len(ret))
 
         # append the remaining data from newly downloaded buffer and return
-        ret += self.buffer.getbuffer()[0 : size - len(ret)]
+        ret += self.buffer.getbuffer()[:size - len(ret)]
 
         assert len(ret) == size
         self.offset += len(ret)

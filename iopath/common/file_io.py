@@ -64,7 +64,7 @@ def get_cache_dir(cache_dir: Optional[str] = None) -> str:
     return cache_dir
 
 
-def file_lock(path: str):  # type: ignore
+def file_lock(path: str):    # type: ignore
     """
     A file lock. Once entered, it is guaranteed that no one else holds the
     same lock. Others trying to enter the lock will block for 30 minutes and
@@ -93,7 +93,7 @@ def file_lock(path: str):  # type: ignore
         # the lock. If failed to create the directory, the next line will raise
         # exceptions.
         pass
-    return portalocker.Lock(path + ".lock", timeout=3600)  # type: ignore
+    return portalocker.Lock(f"{path}.lock", timeout=3600)
 
 
 # pyre-fixme[24]: Generic type `os.PathLike` expects 1 type parameter.
@@ -143,10 +143,7 @@ class LazyPath(os.PathLike):
         return self._value[key]  # type: ignore
 
     def __str__(self) -> str:
-        if self._value is not None:
-            return self._value  # type: ignore
-        else:
-            return super().__str__()
+        return self._value if self._value is not None else super().__str__()
 
 
 class TabularIO(Protocol):
@@ -218,12 +215,12 @@ class PathHandler(EventLogger):
             kwargs (Dict[str, Any])
         """
         if self._strict_kwargs_check:
-            if len(kwargs) > 0:
-                raise ValueError("Unused arguments: {}".format(kwargs))
+            if kwargs:
+                raise ValueError(f"Unused arguments: {kwargs}")
         else:
             logger = logging.getLogger(__name__)
             for k, v in kwargs.items():
-                logger.warning("[PathManager] {}={} argument ignored".format(k, v))
+                logger.warning(f"[PathManager] {k}={v} argument ignored")
 
     def _get_supported_prefixes(self) -> List[str]:
         """
@@ -350,7 +347,7 @@ class PathHandler(EventLogger):
         """
         # Restrict mode until `NonBlockingIO` has async read feature.
         valid_modes = {"w", "a", "b"}
-        if not all(m in valid_modes for m in mode):
+        if any(m not in valid_modes for m in mode):
             raise ValueError(f"`opena` mode must be write or append for path {path}")
 
         # TODO: Each `PathHandler` should set its own `self._buffered`
@@ -670,7 +667,7 @@ class NativePathHandler(PathHandler):
         dst_path = self._get_path_with_cwd(dst_path)
         if os.path.exists(dst_path) and not overwrite:
             logger = logging.getLogger(__name__)
-            logger.error("Destination file {} already exists.".format(dst_path))
+            logger.error(f"Destination file {dst_path} already exists.")
             return False
 
         try:
@@ -678,7 +675,7 @@ class NativePathHandler(PathHandler):
             return True
         except Exception as e:
             logger = logging.getLogger(__name__)
-            logger.error("Error in file copy - {}".format(str(e)))
+            logger.error(f"Error in file copy - {str(e)}")
             return False
 
     def _mv(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
@@ -697,7 +694,7 @@ class NativePathHandler(PathHandler):
         dst_path = self._get_path_with_cwd(dst_path)
         if os.path.exists(dst_path):
             logger = logging.getLogger(__name__)
-            logger.error("Destination file {} already exists.".format(dst_path))
+            logger.error(f"Destination file {dst_path} already exists.")
             return False
 
         try:
@@ -705,7 +702,7 @@ class NativePathHandler(PathHandler):
             return True
         except Exception as e:
             logger = logging.getLogger(__name__)
-            logger.error("Error in move operation - {}".format(str(e)))
+            logger.error(f"Error in move operation - {str(e)}")
             return False
 
     def _symlink(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
@@ -724,16 +721,16 @@ class NativePathHandler(PathHandler):
         dst_path = self._get_path_with_cwd(dst_path)
         logger = logging.getLogger(__name__)
         if not os.path.exists(src_path):
-            logger.error("Source path {} does not exist".format(src_path))
+            logger.error(f"Source path {src_path} does not exist")
             return False
         if os.path.exists(dst_path):
-            logger.error("Destination path {} already exists.".format(dst_path))
+            logger.error(f"Destination path {dst_path} already exists.")
             return False
         try:
             os.symlink(src_path, dst_path)
             return True
         except Exception as e:
-            logger.error("Error in symlink - {}".format(str(e)))
+            logger.error(f"Error in symlink - {str(e)}")
             return False
 
     def _exists(self, path: str, **kwargs: Any) -> bool:
@@ -782,10 +779,10 @@ class NativePathHandler(PathHandler):
         return True
 
     def _get_path_with_cwd(self, path: str) -> str:
-        if not path:
-            return path
-        return os.path.normpath(
-            path if not self._cwd else os.path.join(self._cwd, path)
+        return (
+            os.path.normpath(os.path.join(self._cwd, path) if self._cwd else path)
+            if path
+            else path
         )
 
 
@@ -827,14 +824,14 @@ class HTTPURLHandler(PathHandler):
             )
             filename = path.split("/")[-1]
             if len(filename) > self.MAX_FILENAME_LEN:
-                filename = filename[:100] + "_" + uuid.uuid4().hex
+                filename = f"{filename[:100]}_{uuid.uuid4().hex}"
 
             cached = os.path.join(dirname, filename)
             with file_lock(cached):
                 if not os.path.isfile(cached):
-                    logger.info("Downloading {} ...".format(path))
+                    logger.info(f"Downloading {path} ...")
                     cached = download(path, dirname, filename=filename)
-            logger.info("URL {} cached in {}".format(path, cached))
+            logger.info(f"URL {path} cached in {cached}")
             self.cache_map[path] = cached
         return self.cache_map[path]
 
@@ -855,9 +852,11 @@ class HTTPURLHandler(PathHandler):
             file: a file-like object.
         """
         self._check_kwargs(kwargs)
-        assert mode in ("r", "rb"), "{} does not support open with {} mode".format(
-            self.__class__.__name__, mode
-        )
+        assert mode in {
+            "r",
+            "rb",
+        }, f"{self.__class__.__name__} does not support open with {mode} mode"
+
         assert (
             buffering == -1
         ), f"{self.__class__.__name__} does not support the `buffering` argument"
@@ -886,10 +885,7 @@ class OneDrivePathHandler(HTTPURLHandler):
         data_b64_string = (
             data_b64.decode("utf-8").replace("/", "_").replace("+", "-").rstrip("=")
         )
-        result_url = (
-            f"https://api.onedrive.com/v1.0/shares/u!{data_b64_string}/root/content"
-        )
-        return result_url
+        return f"https://api.onedrive.com/v1.0/shares/u!{data_b64_string}/root/content"
 
     def _get_supported_prefixes(self) -> List[str]:
         return [self.ONE_DRIVE_PREFIX]
@@ -960,10 +956,14 @@ class PathManager:
             handler (PathHandler)
         """
         path = os.fspath(path)  # pyre-ignore
-        for p in self._path_handlers.keys():
-            if path.startswith(p):
-                return self._path_handlers[p]
-        return self._native_path_handler
+        return next(
+            (
+                self._path_handlers[p]
+                for p in self._path_handlers.keys()
+                if path.startswith(p)
+            ),
+            self._native_path_handler,
+        )
 
     def __log_tmetry_keys(self, handler: PathHandler, kvs: Dict[str, VTYPE]) -> None:
         """
@@ -999,8 +999,7 @@ class PathManager:
             buffering (int):
 
         """
-        kvs = {}
-        kvs["op"] = "open"
+        kvs = {"op": "open"}
         if "r" in mode:
             kvs["mode"] = "read"
         elif "w" in mode:
@@ -1008,10 +1007,7 @@ class PathManager:
         elif "a" in mode:
             kvs["mode"] = "append"
         kvs["buffering"] = buffering
-        if "b" in mode:
-            kvs["format"] = "binary"
-        else:
-            kvs["format"] = "text"
+        kvs["format"] = "binary" if "b" in mode else "text"
         kvs["path"] = path
 
         return kvs
@@ -1455,28 +1451,27 @@ class PathManager:
                 continue
 
             old_handler_type = type(self._path_handlers[prefix])
-            if allow_override:
-                # if using the global PathManager, show the warnings
-                global g_pathmgr
-                if self == g_pathmgr:
-                    logger.warning(
-                        f"[PathManager] Attempting to register prefix '{prefix}' from "
-                        "the following call stack:\n"
-                        + "".join(traceback.format_stack(limit=5))
-                        # show the most recent callstack
-                    )
-                    logger.warning(
-                        f"[PathManager] Prefix '{prefix}' is already registered "
-                        f"by {old_handler_type}. We will override the old handler. "
-                        "To avoid such conflicts, create a project-specific PathManager "
-                        "instead."
-                    )
-                self._path_handlers[prefix] = handler
-            else:
+            if not allow_override:
                 raise KeyError(
                     f"[PathManager] Prefix '{prefix}' already registered by {old_handler_type}!"
                 )
 
+            # if using the global PathManager, show the warnings
+            global g_pathmgr
+            if self == g_pathmgr:
+                logger.warning(
+                    f"[PathManager] Attempting to register prefix '{prefix}' from "
+                    "the following call stack:\n"
+                    + "".join(traceback.format_stack(limit=5))
+                    # show the most recent callstack
+                )
+                logger.warning(
+                    f"[PathManager] Prefix '{prefix}' is already registered "
+                    f"by {old_handler_type}. We will override the old handler. "
+                    "To avoid such conflicts, create a project-specific PathManager "
+                    "instead."
+                )
+            self._path_handlers[prefix] = handler
         # Sort path handlers in reverse order so longer prefixes take priority,
         # eg: http://foo/bar before http://foo
         self._path_handlers = OrderedDict(

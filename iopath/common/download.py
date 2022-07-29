@@ -35,7 +35,7 @@ def download(
         logger.info("File {} exists! Skipping download.".format(filename))
         return fpath
 
-    tmp = fpath + ".tmp"  # download to a tmp file first, to be more atomic.
+    tmp = f"{fpath}.tmp"
     try:
         logger.info("Downloading from {} ...".format(url))
         if progress:
@@ -75,5 +75,5 @@ def download(
         except IOError:
             pass
 
-    logger.info("Successfully downloaded " + fpath + ". " + str(size) + " bytes.")
+    logger.info(f"Successfully downloaded {fpath}. {str(size)} bytes.")
     return fpath

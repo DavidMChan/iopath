@@ -51,7 +51,7 @@ class TestsS3(unittest.TestCase):
         cls.s3_bucket = test_bucket
         # NOTE: user should change this to a valid bucket path that is accessible.
         cls.s3_rel_path = test_rel_path
-        cls.s3_full_path = "s3://" + cls.s3_bucket + "/" + cls.s3_rel_path
+        cls.s3_full_path = f"s3://{cls.s3_bucket}/{cls.s3_rel_path}"
         cls.s3_pathhandler = S3PathHandler()
         cls.pathmanager = PathManager()
         cls.pathmanager.register_handler(cls.s3_pathhandler)

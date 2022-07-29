@@ -57,14 +57,14 @@ class TestNativeIOAsync(unittest.TestCase):
         _tmpfile = os.path.join(self._tmpdir, "async.txt")
         try:
             # Write the files.
-            with self._pathmgr.opena(_tmpfile + "f", "w") as f:
+            with self._pathmgr.opena(f"{_tmpfile}f", "w") as f:
                 f.write("f1 ")
-                with self._pathmgr.opena(_tmpfile + "g", "w") as g:
+                with self._pathmgr.opena(f"{_tmpfile}g", "w") as g:
                     f.write("f2 ")
                     g.write("g1 ")
                     f.write("f3 ")
                 f.write("f4 ")
-            with self._pathmgr.opena(_tmpfile + "f", "a") as f:
+            with self._pathmgr.opena(f"{_tmpfile}f", "a") as f:
                 f.write("f5 ")
             F_STR = "f1 f2 f3 f4 f5 "
             G_STR = "g1 "
@@ -83,9 +83,9 @@ class TestNativeIOAsync(unittest.TestCase):
             self.assertTrue(self._pathmgr.async_close())
 
         # Check that both files were asynchronously written and written in order.
-        with self._pathmgr.open(_tmpfile + "f", "r") as f:
+        with self._pathmgr.open(f"{_tmpfile}f", "r") as f:
             self.assertEqual(f.read(), F_STR)
-        with self._pathmgr.open(_tmpfile + "g", "r") as g:
+        with self._pathmgr.open(f"{_tmpfile}g", "r") as g:
             self.assertEqual(g.read(), G_STR)
         # Test that both `NonBlockingIO` objects `f` and `g` are finally closed.
         self.assertEqual(len(manager._path_to_data), 0)
@@ -97,26 +97,22 @@ class TestNativeIOAsync(unittest.TestCase):
         _tmpfile_contents = "Async Text"
         try:
             for _ in range(1):  # Opens 1 thread
-                with self._pathmgr.opena(_tmpfile + "1", "w") as f:
+                with self._pathmgr.opena(f"{_tmpfile}1", "w") as f:
                     f.write(f"{_tmpfile_contents}-1")
             for _ in range(2):  # Opens 2 threads
-                with self._pathmgr.opena(_tmpfile + "2", "w") as f:
+                with self._pathmgr.opena(f"{_tmpfile}2", "w") as f:
                     f.write(f"{_tmpfile_contents}-2")
             for _ in range(3):  # Opens 3 threads
-                with self._pathmgr.opena(_tmpfile + "3", "w") as f:
+                with self._pathmgr.opena(f"{_tmpfile}3", "w") as f:
                     f.write(f"{_tmpfile_contents}-3")
             _path_to_data = (
                 self._pathmgr._native_path_handler._non_blocking_io_manager._path_to_data
             )
             # Join the threads for the 1st and 3rd file and ensure threadpool completed.
             _path_to_data_copy = dict(_path_to_data)
-            self.assertTrue(
-                self._pathmgr.async_join(
-                    _tmpfile + "1", _tmpfile + "3"
-                )  # Removes paths from `_path_to_io`.
-            )
-            self.assertFalse(_path_to_data_copy[_tmpfile + "1"].thread.is_alive())
-            self.assertFalse(_path_to_data_copy[_tmpfile + "3"].thread.is_alive())
+            self.assertTrue(self._pathmgr.async_join(f"{_tmpfile}1", f"{_tmpfile}3"))
+            self.assertFalse(_path_to_data_copy[f"{_tmpfile}1"].thread.is_alive())
+            self.assertFalse(_path_to_data_copy[f"{_tmpfile}3"].thread.is_alive())
             self.assertEqual(len(_path_to_data), 1)  # 1 file remaining
         finally:
             # Join all the remaining threads
@@ -124,7 +120,7 @@ class TestNativeIOAsync(unittest.TestCase):
             self.assertTrue(self._pathmgr.async_close())
 
         # Ensure data cleaned up.
-        self.assertFalse(_path_to_data_copy[_tmpfile + "2"].thread.is_alive())
+        self.assertFalse(_path_to_data_copy[f"{_tmpfile}2"].thread.is_alive())
         self.assertEqual(len(self._pathmgr._async_handlers), 0)
         self.assertEqual(len(_path_to_data), 0)  # 0 files remaining
 

@@ -107,7 +107,7 @@ class NonBlockingIOManager:
             # Store the `PathData`
             self._path_to_data[path] = PathData(queue, t)
 
-        kwargs = {} if not self._buffered else {"buffering": buffering}
+        kwargs = {"buffering": buffering} if self._buffered else {}
         # pyre-fixme[29]: `Type[Union[NonBlockingBufferedIO, NonBlockingIO]]` is not
         #  a function.
         return self._IO(

@@ -45,9 +45,8 @@ class EventLogger:
     # pyre-fixme[3]: Return type must be annotated.
     # pyre-fixme[2]: Parameter must be annotated.
     def add_writer(self, writer):
-        if b_tmetry_available:
-            if isinstance(writer, TmetryWriter):
-                self._writers.append(writer)
+        if b_tmetry_available and isinstance(writer, TmetryWriter):
+            self._writers.append(writer)
 
     # pyre-fixme[3]: Return type must be annotated.
     def add_key(self, key: str, val: VTYPE):

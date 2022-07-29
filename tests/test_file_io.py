@@ -167,7 +167,7 @@ class TestNativeIO(unittest.TestCase):
         self.assertTrue(self._pathmgr.exists(new_dir_path))
 
     def test_copy(self) -> None:
-        _tmpfile_2 = self._tmpfile + "2"  # pyre-ignore
+        _tmpfile_2 = f"{self._tmpfile}2"
         _tmpfile_2_contents = "something else"
         with open(_tmpfile_2, "w") as f:
             f.write(_tmpfile_2_contents)
@@ -178,8 +178,8 @@ class TestNativeIO(unittest.TestCase):
             self.assertEqual(f.read(), self._tmpfile_contents)
 
     def test_move(self) -> None:
-        _tmpfile_2 = self._tmpfile + "2" + uuid.uuid4().hex  # pyre-ignore
-        _tmpfile_3 = self._tmpfile + "3_" + uuid.uuid4().hex  # pyre-ignore
+        _tmpfile_2 = f"{self._tmpfile}2{uuid.uuid4().hex}"
+        _tmpfile_3 = f"{self._tmpfile}3_{uuid.uuid4().hex}"
         _tmpfile_2_contents = "Hello Move"
         with open(_tmpfile_2, "w") as f:
             f.write(_tmpfile_2_contents)
@@ -191,7 +191,7 @@ class TestNativeIO(unittest.TestCase):
         self._pathmgr.rm(_tmpfile_3)
 
     def test_symlink(self) -> None:
-        _symlink = self._tmpfile + "_symlink"  # pyre-ignore
+        _symlink = f"{self._tmpfile}_symlink"
         self.assertTrue(self._pathmgr.symlink(self._tmpfile, _symlink))  # pyre-ignore
         with self._pathmgr.open(_symlink) as f:
             self.assertEqual(f.read(), self._tmpfile_contents)
@@ -273,9 +273,7 @@ class TestNativeIO(unittest.TestCase):
 
         self._pathmgr.set_strict_kwargs_checking(False)
 
-        self._pathmgr.copy(
-            self._tmpfile, self._tmpfile + "2", foo="foo"  # type: ignore
-        )
+        self._pathmgr.copy(self._tmpfile, f"{self._tmpfile}2", foo="foo")
         self._pathmgr.exists(self._tmpfile, foo="foo")  # type: ignore
         self._pathmgr.get_local_path(self._tmpfile, foo="foo")  # type: ignore
         self._pathmgr.isdir(self._tmpfile, foo="foo")  # type: ignore
